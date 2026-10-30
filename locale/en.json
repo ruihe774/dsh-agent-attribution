@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Agent Attribution",
+    "description": "Instructs agents how to attribute git commits and pull requests (Co-Authored-By trailer, PR footer), with the model name filled in automatically. Disable the plugin to remove the instruction."
+  }
+}

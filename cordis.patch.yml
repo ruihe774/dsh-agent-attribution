@@ -1,0 +1,4 @@
+- insert:
+    - id: agent-attribution
+      name: 'dsh-agent-attribution'
+      config: {}
