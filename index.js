@@ -35,10 +35,14 @@ export function apply(ctx, config = {}) {
     const off = c.on('llm/adapters-updated', refresh)
     return () => { off(); catalog.clear() }
   })
+  const render = (provider, modelId) =>
+    buildAttribution({ ...config, modelId, catalogName: catalog.get(provider)?.get(modelId) })
   ctx.effect(() => sp.section({
     name: 'attribution',
     order: sp.getSectionOrder('TOOL_BASH') + 5,
     interpolate: false,
+    // Fallback only: `agent.options` is the model the agent was created with, which
+    // a later model selection overrides. The listener below uses the live selection.
     text: (assembleCtx) => {
       const agent = assembleCtx.agent
       if (!agent) return ''
@@ -46,8 +50,19 @@ export function apply(ctx, config = {}) {
       if (!modelId) {
         try { ({ model: modelId, provider } = defaultModel.currentSelection()) } catch {}
       }
-      const catalogName = catalog.get(provider)?.get(modelId)
-      return buildAttribution({ ...config, modelId, catalogName })
+      return render(provider, modelId)
     },
   }))
+  // The agent loop's model selection rewrites the `provider`/`model` prompt variables
+  // (and the request route) after the sections are built. Prepend so this runs
+  // outermost and sees those final values, then re-render our own section from them.
+  ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+    const assembled = await next()
+    const { provider, model } = assembled.variables ?? {}
+    if (!model) return assembled
+    return {
+      ...assembled,
+      sections: assembled.sections.map((s) => (s.name === 'attribution' ? { ...s, text: render(provider, model) } : s)),
+    }
+  }, { prepend: true })
 }
